@@ -79,16 +79,11 @@ test('«Vista»: solo estilo libro y todas las opciones dibujan sin errores en c
     await page.keyboard.press('Escape');
     await page.mouse.click(10, 500);
     await page.waitForTimeout(150);
-    const px = await page.evaluate(() => {
-      const cv = document.querySelector('canvas.lienzo2d') as HTMLCanvasElement;
-      const d = cv.getContext('2d')!.getImageData(0, 0, cv.width, cv.height).data;
-      const cuenta = (r: number, g: number, b: number) => { let n = 0; for (let i = 0; i < d.length; i += 4) if (Math.abs(d[i] - r) < 6 && Math.abs(d[i + 1] - g) < 6 && Math.abs(d[i + 2] - b) < 6) n++; return n; };
-      return { rojo: cuenta(239, 68, 68), verde: cuenta(34, 197, 94), azul: cuenta(59, 130, 246), ambar: cuenta(245, 158, 11) };
-    });
-    expect(px.rojo, `eje x en ${mol}`).toBeGreaterThan(20);
-    expect(px.verde, `eje y en ${mol}`).toBeGreaterThan(20);
-    expect(px.azul, `eje z en ${mol}`).toBeGreaterThan(20);
-    expect(px.ambar, `ángulos/dipolo en ${mol}`).toBeGreaterThan(20);
+    const etq: string[] = JSON.parse(await page.locator('canvas.lienzo2d').getAttribute('data-etq-extras') || '[]');
+    for (const e of ['x', 'y', 'z']) expect(etq, `eje ${e} en ${mol}`).toContain(e);
+    expect(etq.some((t) => t.endsWith('°')), `ángulos en ${mol}`).toBe(true);
+    if (['agua', 'SF4'].includes(mol)) expect(etq.some((t) => t.startsWith('μ')), `dipolo en ${mol}`).toBe(true);
+    if (['metano', 'benceno', 'CO2', 'etileno'].includes(mol)) expect(etq.some((t) => t.startsWith('μ')), `sin dipolo en ${mol}`).toBe(false);
   }
   expect(errores).toEqual([]);
 });

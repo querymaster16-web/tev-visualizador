@@ -349,7 +349,13 @@ export class App {
     this.el.sug.querySelectorAll('button').forEach((b) => b.addEventListener('mousedown', () => { this.ocultarSug(); this.cargar((b as HTMLElement).dataset.f!); }));
   }
   private ocultarSug() { this.el.sug.hidden = true; }
-  private aviso(html: string, error = true) { this.el.aviso.innerHTML = html ? `<p class="${error ? 'msg' : 'iso'}">${html}</p>` : ''; }
+  private avisoT = 0;
+  private aviso(html: string, error = true) {
+    this.el.aviso.innerHTML = html ? `<p class="${error ? 'msg' : 'iso'}">${html}</p>` : '';
+    clearTimeout(this.avisoT);
+    // los avisos informativos sin botones (p. ej. «Enlace copiado») desaparecen solos
+    if (html && !error && !html.includes('<button')) { const el = this.el.aviso.firstElementChild; this.avisoT = window.setTimeout(() => { if (this.el.aviso.firstElementChild === el) this.el.aviso.innerHTML = ''; }, 3500); }
+  }
 
   // ───────────────────────── Carga ─────────────────────────
   cargar(texto: string, paso?: number, conservar = false) {

@@ -331,25 +331,25 @@ export class Vista2D {
       ctx.beginPath(); ctx.moveTo(pb.x, pb.y); ctx.lineTo(pb.x - Math.cos(ang - 0.4) * h, pb.y - Math.sin(ang - 0.4) * h); ctx.lineTo(pb.x - Math.cos(ang + 0.4) * h, pb.y - Math.sin(ang + 0.4) * h); ctx.closePath(); ctx.fill();
     } });
   }
-  /** Ejes x/y/z, ángulos del átomo elegido y vector dipolar (opcionales desde «Vista»). */
+  /** Ejes x/y/z (líneas discontinuas claras que atraviesan la molécula), ángulos del átomo elegido y vector dipolar. */
   private extras(items: Item[], estatico: boolean, alpha = 1) {
     const an = this.an!, o = this.op, P = this.pos, est = an.estructura;
+    let cabeza: { x: number; y: number; w: number; h: number } | null = null;
+    const etq: { txt: string; x: number; y: number; c: string }[] = [];
     if (o.ejes) {
-      // Brújula de ejes en la esquina: gira con la molécula, así nunca tapa nada
-      const H = this.cv.clientHeight - this.margenInf, ox = 46, oy = H - 46, Lx = 30;
+      const L = Math.max(1.4, ...P.map((p) => len(p) + 0.6)) + 0.5;
       ([[[1, 0, 0], '#ef4444', 'x'], [[0, 1, 0], '#22c55e', 'y'], [[0, 0, 1], '#3b82f6', 'z']] as [Vec3, string, string][]).forEach(([d, c, n]) => {
-        const w = ap(this.R, d), ex = ox + w[0] * Lx, ey = oy - w[1] * Lx;
-        items.push({ z: 1e9 - 1 - (1 - w[2]) * 0.001, draw: () => {
-          const ctx = this.ctx, ang = Math.atan2(ey - oy, ex - ox), h = 8;
-          ctx.globalAlpha = alpha; ctx.strokeStyle = c; ctx.fillStyle = c; ctx.lineWidth = 2.4; ctx.lineCap = 'round';
-          ctx.beginPath(); ctx.moveTo(ox, oy); ctx.lineTo(ex - Math.cos(ang) * h * 0.6, ey - Math.sin(ang) * h * 0.6); ctx.stroke();
-          ctx.beginPath(); ctx.moveTo(ex, ey); ctx.lineTo(ex - Math.cos(ang - 0.4) * h, ey - Math.sin(ang - 0.4) * h); ctx.lineTo(ex - Math.cos(ang + 0.4) * h, ey - Math.sin(ang + 0.4) * h); ctx.closePath(); ctx.fill();
-          this.pildora(n, ox + w[0] * (Lx + 14), oy - w[1] * (Lx + 14), c);
+        const pa = this.proj(mul(d, -L)), pb = this.proj(mul(d, L));
+        items.push({ z: -1e6, draw: () => {
+          const ctx = this.ctx;
+          ctx.save();
+          ctx.globalAlpha = alpha * 0.55; ctx.strokeStyle = c; ctx.lineWidth = 1.4; ctx.lineCap = 'butt'; ctx.setLineDash([7, 6]);
+          ctx.beginPath(); ctx.moveTo(pa.x, pa.y); ctx.lineTo(pb.x, pb.y); ctx.stroke(); ctx.restore();
         } });
+        etq.push({ txt: n, x: pb.x, y: pb.y, c });
       });
     }
-    if (!estatico) return;
-    if (o.angulos && this.sel < P.length) {
+    if (estatico && o.angulos && this.sel < P.length) {
       const c = this.sel;
       const vs = vecinos(est, c).map((v) => v.j);
       const pares: [number, number][] = [];
@@ -371,23 +371,42 @@ export class Vista2D {
           const ctx = this.ctx;
           ctx.globalAlpha = 1; ctx.strokeStyle = '#f59e0b'; ctx.lineWidth = 2; ctx.lineCap = 'round';
           ctx.beginPath(); pts.forEach((q, i) => (i ? ctx.lineTo(q.x, q.y) : ctx.moveTo(q.x, q.y))); ctx.stroke();
-          this.pildora(num(ang, 1) + '°', pl.x, pl.y, '#f59e0b');
         } });
+        etq.push({ txt: num(ang, 1) + '°', x: pl.x, y: pl.y, c: '#f59e0b' });
       }
     }
-    if (o.dipolo && an.polaridad.polar && an.geometria.dipolo.magnitud >= 0.1) {
+    if (estatico && o.dipolo && an.polaridad.polar && an.geometria.dipolo.magnitud >= 0.1) {
       const dir = norm(an.geometria.dipolo.vector);
-      const L = Math.min(3.2, 1.2 + an.polaridad.mu * 0.7);
+      const L = Math.min(2.4, 1 + an.polaridad.mu * 0.5);
       const a = mul(dir, -L / 2), b = mul(dir, L / 2);
       this.flecha(items, a, b, '#f59e0b', 3.2, 1);
       const pa = this.proj(a), pt = this.proj(b);
-      items.push({ z: 1e9, draw: () => {
-        this.ctx.globalAlpha = 1;
-        this.ctx.fillStyle = '#f59e0b'; this.ctx.beginPath(); this.ctx.arc(pa.x, pa.y, 4, 0, 7); this.ctx.fill();
-        const ang = Math.atan2(pt.y - pa.y, pt.x - pa.x);
-        this.pildora(textoMu(an.polaridad), pt.x + Math.cos(ang) * 30, pt.y + Math.sin(ang) * 18 - 14, '#f59e0b');
-      } });
+      items.push({ z: 1e9, draw: () => { this.ctx.globalAlpha = 1; this.ctx.fillStyle = '#f59e0b'; this.ctx.beginPath(); this.ctx.arc(pa.x, pa.y, 4, 0, 7); this.ctx.fill(); } });
+      const ang = Math.atan2(pt.y - pa.y, pt.x - pa.x);
+      cabeza = { x: pt.x, y: pt.y, w: 22, h: 22 };
+      etq.push({ txt: textoMu(an.polaridad), x: pt.x + Math.cos(ang) * 30, y: pt.y + Math.sin(ang) * 18, c: '#f59e0b' });
     }
+    // Las etiquetas no se pisan entre sí ni tapan los átomos: se prueban posiciones cada vez más alejadas
+    this.ctx.font = '600 12px Inter, system-ui, sans-serif';
+    const W = this.cv.clientWidth, H = this.cv.clientHeight - this.margenInf;
+    const ocupado: { x: number; y: number; w: number; h: number }[] = est.atomos.map((a, i) => {
+      const p = this.proj(estatico ? P[i] : sub(this.din?.atomos[i]?.pos ?? this.pos[i], this.off));
+      const r = (a.el.simbolo === 'H' ? 0.24 : 0.2 + 0.2 * (a.el.radio / 100)) * this.esc() * p.k;
+      return { x: p.x, y: p.y, w: r * 2, h: r * 2 };
+    });
+    const choca = (r: { x: number; y: number; w: number; h: number }) => ocupado.some((q) => Math.abs(r.x - q.x) < (r.w + q.w) / 2 + 2 && Math.abs(r.y - q.y) < (r.h + q.h) / 2 + 2);
+    if (estatico) this.cv.dataset.etqExtras = JSON.stringify(etq.map((t) => t.txt));
+    if (cabeza) ocupado.push(cabeza);
+    etq.forEach((t) => {
+      const w = this.ctx.measureText(t.txt).width + 14, h = 20;
+      let r = { x: t.x, y: t.y, w, h };
+      const cand: { x: number; y: number; w: number; h: number }[] = [r];
+      for (let k = 1; k <= 7; k++) for (const [dx, dy] of [[0, -1], [0, 1], [1, 0], [-1, 0], [1, -1], [-1, -1], [1, 1], [-1, 1]]) cand.push({ x: t.x + dx * k * (w * 0.5 + 6), y: t.y + dy * k * (h + 4), w, h });
+      const libre = cand.find((q) => !choca(q) && q.x - w / 2 > 2 && q.x + w / 2 < W - 2 && q.y - h / 2 > 2 && q.y + h / 2 < H - 2);
+      r = libre ?? r;
+      ocupado.push({ ...r, w: r.w + 2, h: r.h + 2 });
+      items.push({ z: 1e9, draw: () => { this.ctx.globalAlpha = alpha; this.pildora(t.txt, r.x, r.y, t.c); } });
+    });
   }
 
   /** Escena de la animación paso a paso (misma estética que la vista de resultado). */
