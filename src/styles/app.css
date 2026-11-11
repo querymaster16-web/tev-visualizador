@@ -149,3 +149,6 @@ main{display:grid;gap:16px;padding:16px}
   .bib-cuerpo{padding:4px 16px 16px}
 }
 @media (max-width:639px){.cta-w small{display:none}.cta-w .btn{height:42px}}
+/* ── Móvil y tablet: ningún bloque ensancha la página (los diagramas se desplazan dentro de su recuadro) ── */
+main>*,.card,.clase-w,.lado,.panel,.svgbox{min-width:0;max-width:100%}
+html,body{overflow-x:hidden}

@@ -33,7 +33,7 @@ test('URL compartible: molécula y etapa se restauran', async ({ page }) => {
   await expect(page.locator('#p-pasos h3')).toContainText('Etapa 6');
 });
 
-for (const [w, h] of [[1440, 900], [1366, 768], [1280, 800], [390, 844]] as [number, number][]) {
+for (const [w, h] of [[1440, 900], [1366, 768], [1280, 800], [1024, 768], [768, 1024], [390, 844], [360, 740]] as [number, number][]) {
   for (const tema of ['light', 'dark'] as const) {
     test(`sin scroll horizontal ni errores: resultado, Lewis, Energía, Enlaces y animación (${w} px, ${tema})`, async ({ page }) => {
       const errores: string[] = [];
@@ -54,6 +54,9 @@ for (const [w, h] of [[1440, 900], [1366, 768], [1280, 800], [390, 844]] as [num
       await page.locator('#chips .chip').nth(6).click();
       await page.waitForTimeout(300);
       expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(1);
+      // móvil/tablet: ningún bloque principal se sale de la pantalla (el overflow-x oculto no debe esconder un desbordamiento)
+      const fuera = await page.evaluate((vw) => Array.from(document.querySelectorAll('.card, .clase-w, .lt, .visor, #tabs, main > *')).filter((e) => e.getBoundingClientRect().right > vw + 1).map((e) => (e as HTMLElement).className), w);
+      expect(fuera, 'bloques fuera de pantalla').toEqual([]);
       expect(errores).toEqual([]);
     });
   }

@@ -88,12 +88,26 @@ export class Vista2D {
     this.cv = document.createElement('canvas');
     this.cv.dataset.etqPi = '[]'; this.cv.dataset.etqSigma = '[]'; this.cv.dataset.etqSolapes = '0';
     this.cv.className = 'lienzo2d';
-    this.cv.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;cursor:grab;touch-action:none';
+    this.cv.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;cursor:grab;touch-action:' + (matchMedia('(pointer:coarse)').matches ? 'pan-y' : 'none');
     cont.appendChild(this.cv);
     this.ctx = this.cv.getContext('2d')!;
     const c = this.cv;
-    c.addEventListener('pointerdown', (e) => { this.drag = { x: e.clientX, y: e.clientY }; this.moved = false; c.setPointerCapture(e.pointerId); });
+    // Táctil: un dedo gira (en horizontal; el desplazamiento vertical es de la página) y dos dedos hacen zoom
+    const dedos = new Map<number, { x: number; y: number }>();
+    let distPinza = 0;
+    c.addEventListener('pointerdown', (e) => {
+      dedos.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      this.drag = { x: e.clientX, y: e.clientY }; this.moved = false; c.setPointerCapture(e.pointerId);
+      if (dedos.size === 2) { const [a, b] = [...dedos.values()]; distPinza = Math.hypot(a.x - b.x, a.y - b.y); this.moved = true; }
+    });
     c.addEventListener('pointermove', (e) => {
+      if (dedos.has(e.pointerId)) dedos.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (dedos.size === 2) {
+        const [a, b] = [...dedos.values()];
+        const d = Math.hypot(a.x - b.x, a.y - b.y);
+        if (distPinza > 0) this.zoom = Math.max(0.4, Math.min(3, this.zoom * (d / distPinza)));
+        distPinza = d; this.render(); return;
+      }
       if (!this.drag) return;
       const dx = e.clientX - this.drag.x, dy = e.clientY - this.drag.y;
       if (Math.abs(dx) + Math.abs(dy) > 2) this.moved = true;
@@ -101,7 +115,9 @@ export class Vista2D {
       this.drag = { x: e.clientX, y: e.clientY };
       this.render();
     });
+    c.addEventListener('pointercancel', (e) => { dedos.delete(e.pointerId); this.drag = null; });
     c.addEventListener('pointerup', (e) => {
+      dedos.delete(e.pointerId);
       if (!this.moved) {
         const b = c.getBoundingClientRect();
         const x = e.clientX - b.left, y = e.clientY - b.top;
