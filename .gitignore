@@ -1,0 +1,21 @@
+# dependencias y resultados de pruebas
+node_modules/
+test-results/
+playwright-report/
+.revision_tmp/
+
+# sistema y editor
+.DS_Store
+.vscode/
+.idea/
+
+# claves y datos privados
+.env
+.env.*
+*.pem
+*.key
+*.log
+
+# capturas locales: solo se sube capturas/readme/
+capturas/*
+!capturas/readme/

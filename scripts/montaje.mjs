@@ -1,0 +1,13 @@
+import { chromium } from 'playwright';
+import { pathToFileURL } from 'url';
+import * as fs from 'fs';
+import { readdirSync } from 'fs';
+const [tag, caso] = process.argv.slice(2);
+const dir = `capturas/ui/${tag}`;
+const ficheros = readdirSync(dir).filter((f) => f.startsWith(caso + '-')).sort();
+const html = `<body style="margin:0;background:#888;font:12px sans-serif;display:grid;grid-template-columns:repeat(2,auto);gap:6px;padding:6px;width:max-content">${ficheros.map((f) => { const m = f.match(/-(\d+)-(light|dark)/); const w = m[1] === '390' ? 220 : 600; return `<div><div style="color:#fff">${f}</div><img src="${pathToFileURL(dir + '/' + f).href}" style="width:${w}px;display:block"></div>`; }).join('')}</body>`;
+const b = await chromium.launch();
+const p = await b.newPage({ viewport: { width: 1250, height: 900 } });
+fs.writeFileSync(`capturas/ui/_montaje.html`, html); await p.goto(pathToFileURL(`capturas/ui/_montaje.html`).href); await p.waitForTimeout(500);
+await p.screenshot({ path: `capturas/ui/${tag}-${caso}.png`, fullPage: true });
+await b.close();

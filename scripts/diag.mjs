@@ -1,0 +1,12 @@
+import { chromium } from 'playwright';
+import { pathToFileURL } from 'url';
+const base = pathToFileURL('dist/index.html').href;
+const [mol, w, h, tema] = process.argv.slice(2);
+const b = await chromium.launch({ args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader'] });
+const ctx = await b.newContext({ viewport: { width: +w, height: +h }, colorScheme: tema || 'light', deviceScaleFactor: 2 });
+const p = await ctx.newPage();
+await p.goto(base + '#mol=' + encodeURIComponent(mol)); await p.reload(); await p.waitForTimeout(1200);
+await p.click('[data-t=energia]'); await p.waitForTimeout(500);
+const el = p.locator('#p-energia .svgbox').first();
+await el.screenshot({ path: `capturas/ui/diag-${mol.replace(/\W/g, '_')}-${w}.png` });
+await b.close();

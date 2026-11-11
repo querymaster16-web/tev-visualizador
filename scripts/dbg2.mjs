@@ -1,0 +1,14 @@
+import { chromium } from 'playwright';
+import { pathToFileURL } from 'url';
+const b = await chromium.launch({ args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader'] });
+const p = await b.newPage(); p.setDefaultTimeout(8000);
+p.on('pageerror', (e) => console.log('PAGEERROR', e.message));
+await p.goto(pathToFileURL('dist/index.html').href);
+const paso = async (n, f) => { const t = Date.now(); try { await f(); console.log('ok', n, Date.now() - t); } catch (e) { console.log('FALLA', n, e.message.split('\n')[0]); } };
+await paso('Fe2O3', async () => { await p.fill('#q', 'Fe2O3'); await p.press('#q', 'Enter'); await p.waitForFunction(() => document.querySelector('#aviso').textContent.includes('transición')); });
+await paso('C2H6O', async () => { await p.fill('#q', 'C2H6O'); await p.press('#q', 'Enter'); await p.waitForFunction(() => document.querySelector('#aviso').textContent.includes('Etanol')); });
+await paso('agua', async () => { await p.fill('#q', 'agua'); await p.press('#q', 'Enter'); await p.waitForTimeout(500); });
+await paso('anim', async () => { await p.click('#b-anim'); await p.waitForTimeout(800); console.log(await p.textContent('#l-etq')); });
+await paso('flecha', async () => { await p.keyboard.press('ArrowRight'); });
+await paso('salir', async () => { await p.click('#l-salir'); });
+await b.close();

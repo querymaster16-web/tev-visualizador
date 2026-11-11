@@ -1,0 +1,14 @@
+import { chromium } from 'playwright';
+import { pathToFileURL } from 'url';
+const b = await chromium.launch({ args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
+const p = await b.newPage({ viewport: { width: 1280, height: 860 } });
+p.on('pageerror', (e) => console.log('PAGEERROR', e.message));
+const base = pathToFileURL('dist/index.html').href;
+await p.goto(base + '#mol=agua'); await p.waitForTimeout(1500);
+await p.screenshot({ path: 'capturas/n-resultado.png' });
+await p.click('#b-menu'); await p.waitForTimeout(300); await p.screenshot({ path: 'capturas/n-menu.png' });
+await p.keyboard.press('Escape'); await p.mouse.click(600, 500);
+await p.click('[data-t=energia]'); await p.waitForTimeout(400); await p.screenshot({ path: 'capturas/n-energia.png' });
+await p.goto(base + '#mol=agua&paso=1'); await p.reload(); await p.waitForTimeout(1500);
+await p.screenshot({ path: 'capturas/n-paso1.png' });
+await b.close();
