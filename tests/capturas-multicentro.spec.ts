@@ -5,7 +5,7 @@ import { resolve } from 'path';
 import { analizar } from '../src/chem/analisis';
 
 const URL_APP = pathToFileURL(resolve('dist/index.html')).href;
-for (const tema of ['claro', 'oscuro'] as const) for (const estilo of ['libro', 'webgl'] as string[]) for (const etapa of [5, 6, 7]) {
+for (const tema of ['claro', 'oscuro'] as const) for (const estilo of ['libro']) for (const etapa of [5, 6, 7]) {
   test(`propino 2.º centro etapa ${etapa} ${estilo} ${tema}`, async ({ page }) => {
     await page.emulateMedia({ colorScheme: tema === 'oscuro' ? 'dark' : 'light' });
     await page.addInitScript((t) => { try { localStorage.setItem('tev-tema', t); } catch { /* */ } }, tema);
@@ -13,7 +13,6 @@ for (const tema of ['claro', 'oscuro'] as const) for (const estilo of ['libro', 
     await page.goto(`${URL_APP}#mol=C3H4`);
     await page.reload();
     await page.waitForSelector('#p-datos table');
-    if (estilo === 'webgl') { await page.click('#b-vista'); await page.click('#estilo button[data-v="webgl"]'); await page.mouse.click(2, 880); }
     await page.click('#b-anim');
     await page.check('#secu');
     const r: any = analizar('C3H4');

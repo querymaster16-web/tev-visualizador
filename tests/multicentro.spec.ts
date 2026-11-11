@@ -9,9 +9,9 @@ const URL_APP = pathToFileURL(resolve('dist/index.html')).href;
 const ESPECIES = ['C3H4', 'CH3COOH', 'C2H5OH', 'CH4N2O', 'HNO3', 'CH3CN', 'C3H6', 'C4H6', 'H2O2', 'N2H4'];
 
 for (const mol of ESPECIES) {
-  for (const estilo of (mol === 'C3H4' || mol === 'CH3COOH' ? ['libro', 'webgl'] : ['libro']) as ('libro' | 'webgl')[]) {
+  for (const estilo of ['libro']) {
     test(`centros de ${mol} (${estilo}): paneles coherentes en ambos sentidos y al saltar`, async ({ page }) => {
-      test.setTimeout(estilo === 'webgl' ? 400000 : 90000);
+      test.setTimeout(90000);
       const r = analizar(mol);
       if (r.tipo !== 'ok') throw new Error('ambiguo');
       const a = r.analisis;
@@ -22,7 +22,6 @@ for (const mol of ESPECIES) {
       await page.goto(`${URL_APP}#mol=${encodeURIComponent(mol)}`);
       await page.reload();
       await page.waitForSelector('#p-datos table');
-      if (estilo === 'webgl') { await page.click('#b-vista'); await page.click('#estilo button[data-v="webgl"]'); await page.mouse.click(2, 880); }
       await page.click('#b-anim');
       await page.click('#lt >> text=Paso a paso').catch(() => {});
       await page.check('#secu');

@@ -4,8 +4,10 @@
  */
 import type { Analisis } from '../chem/analisis';
 import type { Vec3 } from '../chem/vec';
-import { add, cross, len, mul, norm, perpendicular, sub } from '../chem/vec';
-import { grado } from '../chem/tipos';
+import { add, anguloEntre, cross, len, mul, norm, perpendicular, sub } from '../chem/vec';
+import { grado, vecinos } from '../chem/tipos';
+import { textoMu } from '../chem/dipolos';
+import { num } from '../chem/formato';
 import { ejesPi } from './marcos';
 
 type M3 = number[][];
@@ -37,7 +39,7 @@ export interface Din {
 const lerp3 = (a: Vec3, b: Vec3, t: number): Vec3 => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
 
 interface Item { z: number; draw: () => void; atom?: number; p?: { x: number; y: number }; r?: number }
-export interface Opciones2D { hibridos: 'seleccionado' | 'todos' | 'ninguno'; pi: boolean; pares: boolean; paresTodos: boolean; etiquetas: boolean; orbitales: boolean }
+export interface Opciones2D { hibridos: 'seleccionado' | 'todos' | 'ninguno'; pi: boolean; pares: boolean; paresTodos: boolean; etiquetas: boolean; orbitales: boolean; angulos: boolean; dipolo: boolean; ejes: boolean }
 
 export class Vista2D {
   readonly cv: HTMLCanvasElement;
@@ -47,7 +49,7 @@ export class Vista2D {
   sel = 0;
   /** Píxeles reservados abajo (p. ej. para el botón «Ver paso a paso»). */
   margenInf = 0;
-  op: Opciones2D = { hibridos: 'todos', pi: true, pares: true, paresTodos: false, etiquetas: true, orbitales: true };
+  op: Opciones2D = { hibridos: 'todos', pi: true, pares: true, paresTodos: false, etiquetas: true, orbitales: true, angulos: false, dipolo: true, ejes: false };
   autorrotar = false;
   oscuro = false;
   onSeleccion: (i: number) => void = () => {};
@@ -303,9 +305,89 @@ export class Vista2D {
         },
       });
     });
+    this.extras(items, true);
     items.sort((a, b) => a.z - b.z).forEach((it) => it.draw());
     this.hit = items.filter((x) => x.atom != null);
     ctx.globalAlpha = 1;
+  }
+
+
+  /** Etiqueta en forma de píldora (medidas, ejes, dipolo) con fondo opaco legible en claro y oscuro. */
+  private pildora(txt: string, x: number, y: number, borde: string) {
+    const ctx = this.ctx;
+    ctx.font = '600 12px Inter, system-ui, sans-serif';
+    const w = ctx.measureText(txt).width + 14, h = 20;
+    ctx.fillStyle = this.oscuro ? '#151a26' : '#ffffff'; ctx.strokeStyle = borde; ctx.lineWidth = 1.2;
+    ctx.beginPath(); ctx.roundRect(x - w / 2, y - h / 2, w, h, h / 2); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = this.oscuro ? '#e9ecf3' : '#1a1d24'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(txt, x, y + 1);
+  }
+  /** Flecha 3D con punta (coordenadas ya centradas en la molécula). */
+  private flecha(items: Item[], a: Vec3, b: Vec3, color: string, grosor: number, alpha: number) {
+    const pa = this.proj(a), pb = this.proj(b);
+    items.push({ z: Math.max(pa.z, pb.z) + 0.3, draw: () => {
+      const ctx = this.ctx, ang = Math.atan2(pb.y - pa.y, pb.x - pa.x), h = 6 + grosor * 3;
+      ctx.globalAlpha = alpha; ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = grosor; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(pa.x, pa.y); ctx.lineTo(pb.x - Math.cos(ang) * h * 0.6, pb.y - Math.sin(ang) * h * 0.6); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(pb.x, pb.y); ctx.lineTo(pb.x - Math.cos(ang - 0.4) * h, pb.y - Math.sin(ang - 0.4) * h); ctx.lineTo(pb.x - Math.cos(ang + 0.4) * h, pb.y - Math.sin(ang + 0.4) * h); ctx.closePath(); ctx.fill();
+    } });
+  }
+  /** Ejes x/y/z, ángulos del átomo elegido y vector dipolar (opcionales desde «Vista»). */
+  private extras(items: Item[], estatico: boolean, alpha = 1) {
+    const an = this.an!, o = this.op, P = this.pos, est = an.estructura;
+    if (o.ejes) {
+      // Brújula de ejes en la esquina: gira con la molécula, así nunca tapa nada
+      const H = this.cv.clientHeight - this.margenInf, ox = 46, oy = H - 46, Lx = 30;
+      ([[[1, 0, 0], '#ef4444', 'x'], [[0, 1, 0], '#22c55e', 'y'], [[0, 0, 1], '#3b82f6', 'z']] as [Vec3, string, string][]).forEach(([d, c, n]) => {
+        const w = ap(this.R, d), ex = ox + w[0] * Lx, ey = oy - w[1] * Lx;
+        items.push({ z: 1e9 - 1 - (1 - w[2]) * 0.001, draw: () => {
+          const ctx = this.ctx, ang = Math.atan2(ey - oy, ex - ox), h = 8;
+          ctx.globalAlpha = alpha; ctx.strokeStyle = c; ctx.fillStyle = c; ctx.lineWidth = 2.4; ctx.lineCap = 'round';
+          ctx.beginPath(); ctx.moveTo(ox, oy); ctx.lineTo(ex - Math.cos(ang) * h * 0.6, ey - Math.sin(ang) * h * 0.6); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(ex, ey); ctx.lineTo(ex - Math.cos(ang - 0.4) * h, ey - Math.sin(ang - 0.4) * h); ctx.lineTo(ex - Math.cos(ang + 0.4) * h, ey - Math.sin(ang + 0.4) * h); ctx.closePath(); ctx.fill();
+          this.pildora(n, ox + w[0] * (Lx + 14), oy - w[1] * (Lx + 14), c);
+        } });
+      });
+    }
+    if (!estatico) return;
+    if (o.angulos && this.sel < P.length) {
+      const c = this.sel;
+      const vs = vecinos(est, c).map((v) => v.j);
+      const pares: [number, number][] = [];
+      for (let a = 0; a < vs.length; a++) for (let b = a + 1; b < vs.length; b++) pares.push([vs[a], vs[b]]);
+      const vistos: number[] = [];
+      for (const [a, b] of pares) {
+        const ang = anguloEntre(sub(P[a], P[c]), sub(P[b], P[c]));
+        if (vistos.some((x) => Math.abs(x - ang) < 1) && pares.length > 3) continue;
+        vistos.push(ang);
+        if (vistos.length > 6) break;
+        const u = norm(sub(P[a], P[c])), w = norm(sub(P[b], P[c]));
+        const th = Math.acos(Math.max(-1, Math.min(1, u[0] * w[0] + u[1] * w[1] + u[2] * w[2])));
+        const sn = Math.sin(th) || 1, R = 0.75;
+        const pts = Array.from({ length: 25 }, (_, i) => { const t = i / 24; const d = add(mul(u, Math.sin((1 - t) * th) / sn), mul(w, Math.sin(t * th) / sn)); return this.proj(add(P[c], mul(d, R))); });
+        const mid = add(u, w);
+        const dm = len(mid) > 1e-6 ? norm(mid) : perpendicular(u);
+        const pl = this.proj(add(P[c], mul(dm, 1.05)));
+        items.push({ z: pts[12].z + 0.6, draw: () => {
+          const ctx = this.ctx;
+          ctx.globalAlpha = 1; ctx.strokeStyle = '#f59e0b'; ctx.lineWidth = 2; ctx.lineCap = 'round';
+          ctx.beginPath(); pts.forEach((q, i) => (i ? ctx.lineTo(q.x, q.y) : ctx.moveTo(q.x, q.y))); ctx.stroke();
+          this.pildora(num(ang, 1) + '°', pl.x, pl.y, '#f59e0b');
+        } });
+      }
+    }
+    if (o.dipolo && an.polaridad.polar && an.geometria.dipolo.magnitud >= 0.1) {
+      const dir = norm(an.geometria.dipolo.vector);
+      const L = Math.min(3.2, 1.2 + an.polaridad.mu * 0.7);
+      const a = mul(dir, -L / 2), b = mul(dir, L / 2);
+      this.flecha(items, a, b, '#f59e0b', 3.2, 1);
+      const pa = this.proj(a), pt = this.proj(b);
+      items.push({ z: 1e9, draw: () => {
+        this.ctx.globalAlpha = 1;
+        this.ctx.fillStyle = '#f59e0b'; this.ctx.beginPath(); this.ctx.arc(pa.x, pa.y, 4, 0, 7); this.ctx.fill();
+        const ang = Math.atan2(pt.y - pa.y, pt.x - pa.x);
+        this.pildora(textoMu(an.polaridad), pt.x + Math.cos(ang) * 30, pt.y + Math.sin(ang) * 18 - 14, '#f59e0b');
+      } });
+    }
   }
 
   /** Escena de la animación paso a paso (misma estética que la vista de resultado). */
@@ -429,6 +511,7 @@ export class Vista2D {
     let solapes = 0;
     colocadas.forEach((a, i) => colocadas.slice(i + 1).forEach((b) => { if (Math.abs(a.x - b.x) < (a.w + b.w) / 2 && Math.abs(a.y - b.y) < (a.h + b.h) / 2) solapes++; }));
     this.cv.dataset.etqSolapes = String(solapes);
+    this.extras(items, false, alpha);
     items.sort((a, b) => a.z - b.z).forEach((it) => it.draw());
     ctx.globalAlpha = 1;
   }

@@ -58,18 +58,39 @@ for (const f of ESPECIES) {
   });
 }
 
-test('la etiqueta del dipolo no se queda al pasar a una molécula apolar (3D avanzada)', async ({ page }) => {
+test('«Vista»: solo estilo libro y todas las opciones dibujan sin errores en cualquier molécula', async ({ page }) => {
+  const errores: string[] = [];
+  page.on('pageerror', (e) => errores.push(e.message));
+  page.on('console', (m) => { if (m.type() === 'error') errores.push(m.text()); });
+  await page.setViewportSize({ width: 1280, height: 860 });
   await page.goto(URL_APP);
   await page.click('#b-vista');
-  await page.click('#estilo button[data-v=webgl]');
+  await expect(page.locator('#estilo')).toHaveCount(0);
+  await expect(page.locator('#modo')).toHaveCount(0);
+  await expect(page.locator('#b-medir')).toHaveCount(0);
   await page.keyboard.press('Escape');
   await page.mouse.click(10, 500);
-  await page.fill('#q', 'agua');
-  await page.press('#q', 'Enter');
-  await expect(page.locator('.etiqueta-medida.dipolo')).toHaveCount(1);
-  await page.fill('#q', 'metano');
-  await page.press('#q', 'Enter');
-  await expect(page.locator('.etiqueta-medida.dipolo')).toHaveCount(0);
+  for (const mol of ['agua', 'metano', 'benceno', 'SF4', 'etileno', 'CO2']) {
+    await page.fill('#q', mol);
+    await page.press('#q', 'Enter');
+    await page.waitForSelector('#p-datos table');
+    await page.click('#b-vista');
+    for (const k of ['angulos', 'ejes', 'dipolo', 'paresTodos']) { const c = page.locator(`#pop-vista input[data-k=${k}]`); if (!(await c.isChecked())) await c.check(); }
+    await page.keyboard.press('Escape');
+    await page.mouse.click(10, 500);
+    await page.waitForTimeout(150);
+    const px = await page.evaluate(() => {
+      const cv = document.querySelector('canvas.lienzo2d') as HTMLCanvasElement;
+      const d = cv.getContext('2d')!.getImageData(0, 0, cv.width, cv.height).data;
+      const cuenta = (r: number, g: number, b: number) => { let n = 0; for (let i = 0; i < d.length; i += 4) if (Math.abs(d[i] - r) < 6 && Math.abs(d[i + 1] - g) < 6 && Math.abs(d[i + 2] - b) < 6) n++; return n; };
+      return { rojo: cuenta(239, 68, 68), verde: cuenta(34, 197, 94), azul: cuenta(59, 130, 246), ambar: cuenta(245, 158, 11) };
+    });
+    expect(px.rojo, `eje x en ${mol}`).toBeGreaterThan(20);
+    expect(px.verde, `eje y en ${mol}`).toBeGreaterThan(20);
+    expect(px.azul, `eje z en ${mol}`).toBeGreaterThan(20);
+    expect(px.ambar, `ángulos/dipolo en ${mol}`).toBeGreaterThan(20);
+  }
+  expect(errores).toEqual([]);
 });
 
 // ───────── Etiquetas π de la etapa 7 (estilo libro, 2D) ─────────

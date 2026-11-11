@@ -29,7 +29,7 @@ npm run test:visual  # prueba visual con Playwright (requiere build previo); cap
 - **Buscador:** nombres en español (`agua`, `ácido sulfúrico`, `ion sulfato`), fórmulas (`SF4`, `NH4+`, `SO4^2-`, `CO3 2-`, `PO₄³⁻`, `[NH4]+`) o SMILES (`CCO`, `C=C`, `c1ccccc1`, `CC(=O)O`). Si la fórmula es ambigua (`C2H6O`) ofrece los isómeros de la biblioteca.
 - **Reproductor:** ⏮ ◀ ▶/⏸ ▶ ⏭, barra con marcas por etapa, velocidad 0,5×/1×/2×, modo continuo o paso a paso. Teclas: ← → (etapa), espacio (reproducir/pausar).
 - **Etapas:** 1 átomo aislado · 2 recuento · 3 promoción · 4 hibridación · 5 repulsión RPECV · 6 llegada de vecinos (σ) · 7 enlaces π · 8 molécula final. La etapa 7 solo aparece si hay π.
-- **3D:** clic en un átomo para analizarlo, rotar/zoom/desplazar, bolas y varillas / spacefill / esqueleto, medir (2 átomos = distancia, 3 = ángulo), ejes, dipolo, ángulos, exportar PNG. «Secuencia de todos los centros» recorre cada átomo central.
+- **3D:** clic en un átomo para analizarlo, rotar/zoom/desplazar, ejes x/y/z, dipolo, ángulos, exportar PNG. «Secuencia de todos los centros» recorre cada átomo central.
 - **Pestañas:** Paso a paso (cajas de orbitales), Lewis (con resonancia), Energía (4 columnas, sincronizada), Datos, Enlaces. Los diagramas se exportan a SVG/PNG.
 - **Práctica** (preguntas y cajas con arrastrar electrones), **Comparar** (dos moléculas) y **Ficha A4** (impresión/PDF).
 - URL compartible: `#mol=SF4&paso=5`. Tema claro/oscuro; respeta `prefers-reduced-motion`.

@@ -177,7 +177,7 @@ export function abrirGuia(raiz: HTMLElement) {
    <li>Verás directamente el <b>resultado final</b> en 3D y en la pestaña <b>Resultado</b>: hibridación, geometría, enlaces σ/π y polaridad.</li>
    <li>Pulsa <b>▶ Ver paso a paso</b> para ver la animación: átomo → recuento → promoción → hibridación → repulsión → vecinos → π → molécula final.</li>
    <li>Con el reproductor puedes pausar, ir etapa a etapa (← →), cambiar la velocidad o arrastrar la barra.</li>
-   <li><b>Haz clic en un átomo</b> para analizarlo. <b>⚙ Vista</b> permite cambiar la representación y mostrar u ocultar orbitales, pares, ángulos y dipolo.</li>
+   <li><b>Haz clic en un átomo</b> para analizarlo. <b>⚙ Vista</b> permite mostrar u ocultar orbitales, pares, electrones, ángulos, dipolo y ejes x/y/z.</li>
    <li>Las pestañas <b>Lewis</b>, <b>Energía</b> y <b>Enlaces</b> tienen los diagramas (exportables a SVG/PNG).</li>
    <li>En <b>☰ Menú</b>: modo práctica, comparador, ficha A4 para imprimir y enlace para compartir.</li>
   </ol>`);

@@ -47,7 +47,6 @@ export class App {
   private tab = 'datos';
   private iconos: Record<string, string> = {};
   private animMode = false;
-  private estilo: 'libro' | 'webgl' = 'libro';
   private vista!: Vista2D;
   private sugSel = -1;
 
@@ -86,7 +85,6 @@ export class App {
           <div class="pop-w"><button class="btn" id="b-vista" aria-haspopup="true">⚙ Vista ▾</button><div class="pop" id="pop-vista" hidden></div></div>
           <select id="centro" aria-label="Átomo analizado" title="Átomo que se analiza"></select>
           <span class="sep"></span>
-          <button class="btn" id="b-medir" title="Haz clic en 2 átomos (distancia) o 3 (ángulo)">📏 Medir</button>
           <button class="btn" id="b-centrar" title="Centrar la molécula">◎ Centrar</button>
           <button class="btn" id="b-rot" title="Girar automáticamente">↻ Girar</button>
           <button class="btn" id="b-png" title="Guardar imagen PNG">⬇ PNG</button>
@@ -122,7 +120,7 @@ export class App {
       </aside>
     </main>`;
     const q = (id: string) => this.raiz.querySelector('#' + id) as HTMLElement;
-    ['q', 'sug', 'aviso', 'visor', 'msg3d', 'gauge', 'gtxt', 'centro', 'marcas', 'chips', 'l-etq', 'l-play', 'l-rango', 'p-pasos', 'p-lewis', 'p-energia', 'p-datos', 'p-enlaces', 'b-tema', 'b-medir', 'b-rot', 'lt', 'cta-w', 'pop-vista', 'pop-menu'].forEach((i) => (this.el[i] = q(i)));
+    ['q', 'sug', 'aviso', 'visor', 'msg3d', 'gauge', 'gtxt', 'centro', 'marcas', 'chips', 'l-etq', 'l-play', 'l-rango', 'p-pasos', 'p-lewis', 'p-energia', 'p-datos', 'p-enlaces', 'b-tema', 'b-rot', 'lt', 'cta-w', 'pop-vista', 'pop-menu'].forEach((i) => (this.el[i] = q(i)));
     this.escena = new Escena3D(this.el.visor);
     this.vista = new Vista2D(this.el.visor);
     this.vista.onSeleccion = (i) => this.seleccionarAtomo(i);
@@ -165,7 +163,7 @@ export class App {
     const items: [string, string, string, () => void][] = [
       ['mp', '🎯 Modo práctica', 'Preguntas sobre hibridación y geometría, y cajas de electrones para rellenar', () => abrirQuiz(this.raiz, this.tema)],
       ['mc', '⚖ Comparar dos moléculas', 'Por ejemplo NH₃ frente a BF₃', () => abrirComparador(this.raiz, this.tema, this.oscuro)],
-      ['mf', '🖨 Ficha A4 (imprimir / PDF)', 'Todos los pasos de la molécula en una hoja', () => { if (!this.an) return; this.escena.renderer.render(this.escena.scene, this.escena.camera); imprimirFicha(this.an, this.sel, this.tema, this.usaWebgl() ? this.escena.renderer.domElement.toDataURL('image/png') : this.vista.dataURL()); }],
+      ['mf', '🖨 Ficha A4 (imprimir / PDF)', 'Todos los pasos de la molécula en una hoja', () => { if (!this.an) return; imprimirFicha(this.an, this.sel, this.tema, this.vista.dataURL()); }],
       ['ms', '🔗 Copiar enlace', 'Comparte la molécula y la etapa actual', () => { navigator.clipboard?.writeText(location.href).then(() => this.aviso('Enlace copiado.', false)).catch(() => this.aviso(`Enlace: ${esc(location.href)}`, false)); }],
       ['mg', '❓ Guía rápida', 'Qué hace cada parte de la herramienta', () => abrirGuia(this.raiz)],
     ];
@@ -173,8 +171,7 @@ export class App {
     this.el['pop-menu'].addEventListener('click', (e) => { const b = (e.target as HTMLElement).closest('button'); if (!b) return; this.cerrarPops(); items.find((i) => i[0] === b.dataset.k)![3](); });
     // Vista
     const defs: [string, string, boolean][] = [['pi', 'Orbitales p / π', true], ['pares', 'Pares solitarios (del átomo elegido)', true], ['paresTodos', 'Pares solitarios de todos los átomos', false], ['electrones', 'Electrones', true], ['etiquetas', 'Etiquetas de átomos', true], ['angulos', 'Ángulos', false], ['dipolo', 'Dipolo', true], ['ejes', 'Ejes x/y/z', false], ['orbitales', 'Orbitales en la vista final', true]];
-    this.el['pop-vista'].innerHTML = `<h5>Estilo de dibujo</h5><div class="seg" id="estilo">${[['libro', 'Estilo libro'], ['webgl', '3D avanzada']].map(([v, n], i) => `<button data-v="${v}" class="${i ? '' : 'on'}">${n}</button>`).join('')}</div><small style="display:block;padding:4px 8px;color:var(--muted)">«3D avanzada» añade medir, ejes, ángulos y dipolo.</small><h5>Representación (3D avanzada)</h5><div class="seg" id="modo">${[['bolas', 'Bolas y varillas'], ['spacefill', 'Spacefill'], ['esqueleto', 'Esqueleto']].map(([v, n], i) => `<button data-v="${v}" class="${i ? '' : 'on'}">${n}</button>`).join('')}</div>
-      <h5>Híbridos que se dibujan</h5><div class="seg" id="hib">${[['todos', 'Todos'], ['seleccionado', 'Átomo elegido'], ['ninguno', 'Ninguno']].map(([v, n], i) => `<button data-v="${v}" class="${i ? '' : 'on'}">${n}</button>`).join('')}</div>
+    this.el['pop-vista'].innerHTML = `<h5>Híbridos que se dibujan</h5><div class="seg" id="hib">${[['todos', 'Todos'], ['seleccionado', 'Átomo elegido'], ['ninguno', 'Ninguno']].map(([v, n], i) => `<button data-v="${v}" class="${i ? '' : 'on'}">${n}</button>`).join('')}</div>
       <h5>Mostrar</h5>${defs.map(([k, n, v]) => `<label class="chk"><input type="checkbox" data-k="${k}" ${v ? 'checked' : ''}/> ${n}</label>`).join('')}
       <h5>Modelo químico</h5><label class="chk"><input type="checkbox" data-k="hibterm"/> Hibridar también los átomos terminales</label>
       <h5>Convenio de Lewis</h5><div class="seg" id="conv">${[['cargas', 'Minimizar cargas'], ['octeto', 'Respetar octeto']].map(([v, n], i) => `<button data-v="${v}" class="${i ? '' : 'on'}">${n}</button>`).join('')}</div><small style="display:block;padding:4px 8px;color:var(--muted)">Cambia solo π y promoción en SO₂, SO₄²⁻, ClO₄⁻…; la hibridación y la geometría no cambian.</small>`;
@@ -185,8 +182,9 @@ export class App {
       if (k in this.vista.op) { (this.vista.op as unknown as Record<string, boolean>)[k] = i.checked; this.vista.render(); }
       if (k === 'paresTodos') { this.lt.paresTodos = i.checked; this.lt.refrescar(); return; }
       if (k === 'hibterm') { this.hibTerm = i.checked; this.cargar(this.texto, undefined, true); return; }
-      if (['angulos', 'dipolo', 'ejes', 'etiquetas'].includes(k)) this.escena.setInterruptor(k as 'angulos', i.checked);
-      else this.lt.ctx[k as 'pi'] = i.checked;
+      if (['angulos', 'dipolo', 'ejes'].includes(k)) return;
+      if (k === 'etiquetas') this.escena.setInterruptor('etiquetas', i.checked);
+      this.lt.ctx[k as 'pi'] = i.checked;
       this.lt.refrescar();
     });
     pv.addEventListener('click', (e) => {
@@ -195,21 +193,15 @@ export class App {
       const seg = b.parentElement!;
       seg.querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b));
       if (seg.id === 'conv') { this.convenio = b.dataset.v as 'cargas'; this.cargar(this.texto, undefined, true); }
-      else if (seg.id === 'estilo') { this.estilo = b.dataset.v as 'libro'; this.actualizarVisor(); }
-      else if (seg.id === 'modo') this.escena.setModo(b.dataset.v as 'bolas');
       else { this.lt.hibridos = b.dataset.v as 'todos'; this.vista.op.hibridos = b.dataset.v as 'todos'; this.vista.render(); this.lt.refrescar(); }
     });
   }
-  private usaWebgl() { return this.estilo === 'webgl'; }
-  /** Alterna entre el dibujo «estilo libro» (2D) y la escena WebGL. */
+  /** El visor siempre usa el dibujo «estilo libro» (2D); la escena WebGL queda oculta y solo sirve de motor. */
   private actualizarVisor() {
-    const w = this.usaWebgl();
-    this.el.visor.querySelectorAll<HTMLElement>('.lienzo3d,.capa-etiquetas').forEach((e) => (e.style.display = w ? '' : 'none'));
+    this.el.visor.querySelectorAll<HTMLElement>('.lienzo3d,.capa-etiquetas').forEach((e) => (e.style.display = 'none'));
     this.vista.margenInf = this.animMode ? 0 : 56;
-    this.vista.mostrar(!w);
+    this.vista.mostrar(true);
     this.vista.encuadrar(true);
-    (this.el['b-medir'] as HTMLElement).style.display = w && !this.animMode ? '' : 'none';
-    this.escena.pedirRender();
   }
   /** Coloca un menú desplegable dentro de la pantalla (nunca se sale por ningún lado). */
   private colocarPop(b: HTMLElement, p: HTMLElement) {
@@ -274,8 +266,7 @@ export class App {
     $('centro').addEventListener('change', (e) => this.seleccionarAtomo(+(e.target as HTMLSelectElement).value));
     $('b-centrar').addEventListener('click', () => { this.escena.encuadrar(); this.vista.encuadrar(); });
     $('b-rot').addEventListener('click', (e) => { const b = e.currentTarget as HTMLElement; b.classList.toggle('on'); this.escena.setAutorrotacion(b.classList.contains('on')); this.vista.autorrotar = b.classList.contains('on'); });
-    $('b-medir').addEventListener('click', (e) => { const b = e.currentTarget as HTMLElement; b.classList.toggle('on'); this.escena.setModoMedir(b.classList.contains('on')); });
-    $('b-png').addEventListener('click', () => (this.usaWebgl() ? this.escena.exportarPNG(`${this.texto || 'molecula'}.png`) : this.vista.exportarPNG(`${this.texto || 'molecula'}.png`)));
+    $('b-png').addEventListener('click', () => this.vista.exportarPNG(`${this.texto || 'molecula'}.png`));
     $('b-anim').addEventListener('click', () => this.entrarAnim());
     $('l-salir').addEventListener('click', () => this.salirAnim());
     $('l-ini').addEventListener('click', () => this.lt.inicio());
