@@ -168,6 +168,7 @@ html,body{overflow-x:hidden}
   .comp .visor{height:min(300px,60svh);min-height:min(260px,60svh)}
 }
 .modal>div{overscroll-behavior:contain}
-/* Autoría: solo cuando la cabecera tiene sitio de sobra */
-.marca .autor{display:none}
-@media (min-width:1040px){.marca .autor{display:inline}}
+/* Autoría: en su propia línea bajo el título; junto al subtítulo cuando la cabecera tiene sitio de sobra */
+.marca{flex-wrap:wrap;row-gap:2px}
+.marca .autor{display:block;flex:0 0 100%;font:500 12px var(--sans);color:var(--muted);letter-spacing:0}
+@media (min-width:1040px){.marca .autor{display:inline;flex:none}.marca .autor::before{content:'· '}.marca .autor{margin-left:-4px}}
