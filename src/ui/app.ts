@@ -67,7 +67,7 @@ export class App {
   private montar() {
     this.raiz.innerHTML = `
     <header class="cab">
-      <div class="marca"><b>TEV</b> Enlace de Valencia <small>visualizador interactivo</small></div>
+      <div class="marca"><b>TEV</b> Enlace de Valencia <small>visualizador interactivo<span class="autor"> · por Juan Soilán</span></small></div>
       <div class="acc">
         <button class="btn" id="b-bib" aria-haspopup="dialog">Biblioteca</button>
         <div class="pop-w"><button class="btn" id="b-menu" aria-haspopup="true">☰ Menú</button><div class="pop" id="pop-menu" hidden></div></div>

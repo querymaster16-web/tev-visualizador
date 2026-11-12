@@ -168,3 +168,6 @@ html,body{overflow-x:hidden}
   .comp .visor{height:min(300px,60svh);min-height:min(260px,60svh)}
 }
 .modal>div{overscroll-behavior:contain}
+/* Autoría: solo cuando la cabecera tiene sitio de sobra */
+.marca .autor{display:none}
+@media (min-width:1040px){.marca .autor{display:inline}}
