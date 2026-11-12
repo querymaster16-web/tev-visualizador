@@ -10,7 +10,7 @@ export interface Fallo { tipo: 'solape' | 'cortado' | 'fuera-recuadro' | 'fuera-
 export async function auditar(page: Page, raiz = ''): Promise<Fallo[]> {
   return page.evaluate((raiz) => {
     const out: { tipo: string; texto: string; detalle?: string }[] = [];
-    interface It { el: Element; txt: string; r: DOMRect; svg: boolean; scroller: Element | null; fuera: boolean }
+    interface It { el: Element; txt: string; r: DOMRect; svg: boolean; scroller: Element | null; fuera: boolean; rv: DOMRect | null }
     const items: It[] = [];
     const SKIP = new Set(['SCRIPT', 'STYLE', 'TITLE', 'OPTION', 'SELECT', 'TEXTAREA', 'INPUT', 'CANVAS']);
     const visible = (el: Element) => (el as HTMLElement).checkVisibility?.({ opacityProperty: true, visibilityProperty: true }) ?? true;
@@ -48,7 +48,17 @@ export async function auditar(page: Page, raiz = ''): Promise<Fallo[]> {
           if (sale && e === scroller) fuera = true;
         }
         if (recortado) continue;
-        items.push({ el, txt: t.slice(0, 40), r, svg, scroller, fuera });
+        // parte realmente visible del texto (recortada por los contenedores con scroll u overflow): con otros textos de fuera del contenedor solo cuenta lo visible
+        let v: { l: number; t: number; r: number; b: number } | null = { l: r.left, t: r.top, r: r.right, b: r.bottom };
+        for (let e: Element | null = el; e && e !== document.body && v; e = e.parentElement) {
+          if (e instanceof SVGElement) continue;
+          const cs = getComputedStyle(e);
+          if (cs.overflowX === 'visible' && cs.overflowY === 'visible') continue;
+          const ar = e.getBoundingClientRect();
+          v = { l: Math.max(v.l, ar.left), t: Math.max(v.t, ar.top), r: Math.min(v.r, ar.right), b: Math.min(v.b, ar.bottom) };
+          if (v.r - v.l < 1 || v.b - v.t < 1) v = null;
+        }
+        items.push({ el, txt: t.slice(0, 40), r, svg, scroller, fuera, rv: v ? new DOMRect(v.l, v.t, v.r - v.l, v.b - v.t) : null });
       }
     }
     const caja = (a: DOMRect, b: DOMRect) => ({ ix: Math.min(a.right, b.right) - Math.max(a.left, b.left), iy: Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top) });
@@ -56,10 +66,12 @@ export async function auditar(page: Page, raiz = ''): Promise<Fallo[]> {
     for (let i = 0; i < items.length; i++) for (let j = i + 1; j < items.length; j++) {
       const a = items[i], b = items[j];
       if (a.el === b.el || a.el.contains(b.el) || b.el.contains(a.el)) continue;
-      if ((a.fuera || b.fuera) && a.scroller !== b.scroller) continue;
-      const { ix, iy } = caja(a.r, b.r);
+      const mismo = a.scroller === b.scroller;
+      const ra = mismo ? a.r : a.rv, rb = mismo ? b.r : b.rv; // de contenedores distintos solo se compara lo visible
+      if (!ra || !rb) continue;
+      const { ix, iy } = caja(ra, rb);
       if (ix <= 2 || iy <= 3) continue;
-      const min = Math.min(a.r.width * a.r.height, b.r.width * b.r.height);
+      const min = Math.min(ra.width * ra.height, rb.width * rb.height);
       if ((ix * iy) / min < 0.15) continue;
       out.push({ tipo: 'solape', texto: `«${a.txt}» × «${b.txt}»`, detalle: `${ix.toFixed(0)}×${iy.toFixed(0)}px` });
     }

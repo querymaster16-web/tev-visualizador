@@ -56,6 +56,27 @@ for (const [w, tema] of [[1440, 'light'], [390, 'dark']] as const) {
   }
 }
 
+// El propio detector se comprueba con fallos fabricados: si dejara de verlos, los demás tests pasarían sin comprobar nada
+test('el detector ve un solape, un texto cortado y una caja desbordada (y no da falsos avisos)', async ({ page }) => {
+  await preparar(page, 1440, 'light');
+  await page.evaluate(() => {
+    const d = document.createElement('div');
+    d.id = 'sintetico';
+    d.style.cssText = 'position:fixed;left:20px;top:200px;z-index:99;background:#fff;font:14px sans-serif';
+    d.innerHTML = `<span style="position:absolute;left:0;top:0">solapado uno</span><span style="position:absolute;left:10px;top:4px">solapado dos</span>
+      <div style="position:absolute;left:0;top:60px;width:40px;height:20px;overflow:hidden;white-space:nowrap">texto muy largo cortado</div>
+      <div style="position:absolute;left:0;top:100px;width:30px;height:20px;border:1px solid #000;white-space:nowrap">desbordada de su caja</div>
+      <div style="position:absolute;left:0;top:140px;width:60px;height:20px;overflow:auto;white-space:nowrap"><span style="position:absolute;left:100px">fuera por scroll</span></div>`;
+    document.body.appendChild(d);
+  });
+  const f = await auditar(page, '#sintetico');
+  const tipos = f.map((x) => x.tipo);
+  expect(tipos).toContain('solape');
+  expect(tipos).toContain('cortado');
+  expect(tipos).toContain('fuera-recuadro');
+  expect(f.some((x) => x.texto.includes('fuera por scroll')), 'lo desplazable por scroll no es un fallo').toBe(false);
+});
+
 // ───────────── Comparador ─────────────
 const PAREJAS: [string, string][] = [['NH3', 'BF3'], ['CO2', 'SO2'], ['H2O', 'H2O'], ['SF4', 'XeF4'], ['SO4^2-', 'NH4^+'], ['C6H5COOH', 'CH3COOH'], ['NO2', 'CH3'], ['IF7', 'SF6'], ['C6H6', 'C2H4']];
 for (const [w, tema] of COMBOS) {
