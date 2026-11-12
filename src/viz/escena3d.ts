@@ -11,6 +11,7 @@ import { vecinos } from '../chem/tipos';
 import type { Vec3 } from '../chem/vec';
 import { anguloEntre, sub } from '../chem/vec';
 import { ejesPi } from './marcos';
+import { protegerVisor } from './tactil';
 
 export type Modo = 'bolas' | 'spacefill' | 'esqueleto';
 
@@ -95,6 +96,7 @@ export class Escena3D {
     this.controls.enableDamping = true;
     this.controls.dampingFactor = 0.08;
     this.controls.addEventListener('change', () => (this.necesitaRender = true));
+    protegerVisor(contenedor, this.renderer.domElement, () => this.encuadrar());
 
     // Iluminación suave: hemisférica + direccional + relleno
     this.scene.add(new THREE.HemisphereLight(0xffffff, 0x8a93a8, 1.35));

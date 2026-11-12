@@ -9,6 +9,7 @@ import { grado, vecinos } from '../chem/tipos';
 import { textoMu } from '../chem/dipolos';
 import { num } from '../chem/formato';
 import { ejesPi } from './marcos';
+import { protegerVisor } from './tactil';
 
 type M3 = number[][];
 const mm = (A: M3, B: M3): M3 => A.map((r) => [0, 1, 2].map((j) => r[0] * B[0][j] + r[1] * B[1][j] + r[2] * B[2][j]));
@@ -90,8 +91,9 @@ export class Vista2D {
     this.cv = document.createElement('canvas');
     this.cv.dataset.etqPi = '[]'; this.cv.dataset.etqSigma = '[]'; this.cv.dataset.etqSolapes = '0';
     this.cv.className = 'lienzo2d';
-    this.cv.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;cursor:grab;touch-action:' + (matchMedia('(pointer:coarse)').matches ? 'pan-y' : 'none');
+    this.cv.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;cursor:grab;touch-action:none';
     cont.appendChild(this.cv);
+    protegerVisor(cont, this.cv, () => this.encuadrar());
     this.ctx = this.cv.getContext('2d')!;
     const c = this.cv;
     // Táctil: un dedo gira (en horizontal; el desplazamiento vertical es de la página) y dos dedos hacen zoom
@@ -213,6 +215,7 @@ export class Vista2D {
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, W, H);
     if (!an) return;
+    this.cv.dataset.zoom = this.zoom.toFixed(3); this.cv.dataset.rot = this.R.flat().map((x) => x.toFixed(3)).join(',');
     const D = this.din;
     if (D && D.mezcla < 1) { this.pintarDin(D, 1 - D.mezcla); if (D.mezcla <= 0) return; }
     ctx.globalAlpha = D ? D.mezcla : 1;
