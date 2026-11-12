@@ -27,6 +27,8 @@ export class DiagramaEnergia {
   private W = 1000;
   private H = 410;
   private yBase = 340;
+  private yTit = 380;
+  private etqSigma: { x: number; y: number } | null = null;
   private sc = 82;
   private cols: { x0: number; w: number }[] = [];
   private colG: SVGGElement[] = [];
@@ -72,6 +74,10 @@ export class DiagramaEnergia {
     const energiaHib = hib ? (hib.composicion.s * E_S + hib.composicion.p * E_P + hib.composicion.d * E_D) / hib.n : E_P;
     const topE = Math.max(E_D + 0.7, 2.6);
     this.sc = (this.yBase - 56) / topE;
+    // los títulos de columna bajan lo necesario para no pisar los cuadros σ/π de «Enlaces» ni sus etiquetas
+    const bajo = Math.max(hib ? this.y(energiaHib - 0.85) + B + 20 : this.y(E_P - 0.85) + B + 4, this.y(E_P - 0.62) + B + 20);
+    this.yTit = Math.max(this.yBase + 40, bajo + 18 + (hib && t.pi > 0 ? 13 : 0));
+    this.H = Math.max(410, this.yTit + 30);
 
     const s = this.svg;
     s.setAttribute('viewBox', `0 0 ${this.W} ${this.H}`);
@@ -112,8 +118,8 @@ export class DiagramaEnergia {
       gc.appendChild(fondo);
       this.fondoCol.push(fondo);
       const tx = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-      tx.innerHTML = `<text x="${c.x0 + c.w / 2}" y="${this.yBase + 40}" text-anchor="middle" font-size="13" font-weight="600" fill="${tema.tinta}">${esc(titulos[i])}</text>
-        <text x="${c.x0 + c.w / 2}" y="${this.yBase + 58}" text-anchor="middle" font-size="11" fill="${tema.suave}">${esc(subt[i])}</text>`;
+      tx.innerHTML = `<text x="${c.x0 + c.w / 2}" y="${this.yTit}" text-anchor="middle" font-size="13" font-weight="600" fill="${tema.tinta}">${esc(titulos[i])}</text>
+        <text x="${c.x0 + c.w / 2}" y="${this.yTit + 18}" text-anchor="middle" font-size="11" fill="${tema.suave}">${esc(subt[i])}</text>`;
       gc.appendChild(tx);
       this.svg.appendChild(gc);
       this.colG.push(gc);
@@ -218,7 +224,7 @@ export class DiagramaEnergia {
         xsig += B + GB;
       });
       // etiqueta de enlaces
-      if (grupos.sig.length) this.texto(c4.x0 + c4.w - anchoCluster(grupos.sig.length) / 2, ys + B + 16, 'enlaces σ', tema.suave, 10, 3);
+      if (grupos.sig.length) { this.etqSigma = { x: c4.x0 + c4.w - anchoCluster(grupos.sig.length) / 2, y: ys + B + 16 }; this.texto(this.etqSigma.x, this.etqSigma.y, 'enlaces σ', tema.suave, 10, 3); }
     } else {
       // p puro: σ y pares
       const sg = t.excitado.map((o, i) => ({ o, i })).filter(({ o }) => t.roles[o.id]?.rol === 'sigma');
@@ -247,7 +253,10 @@ export class DiagramaEnergia {
         pk.setAttribute('opacity', '0');
         this.pinkPi.push(pk);
       });
-      this.texto(xp0 + anchoCluster(pis.length) / 2, yp + B + 16, 'enlaces π', tema.suave, 10, 3);
+      const xe = xp0 + anchoCluster(pis.length) / 2;
+      // si «enlaces σ» cae justo al lado, «enlaces π» baja una línea
+      const dy = this.etqSigma && Math.abs(this.etqSigma.x - xe) < 62 && Math.abs(this.etqSigma.y - (yp + B + 16)) < 13 ? 13 : 0;
+      this.texto(xe, yp + B + 16 + dy, 'enlaces π', tema.suave, 10, 3);
     }
 
     // ── Flechas entre columnas

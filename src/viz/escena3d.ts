@@ -50,6 +50,7 @@ export class Escena3D {
   sel = 0;
   radioEscena = 3;
   radioEncuadre = 2;
+  private camaraTocada = false;
   centro = new THREE.Vector3();
   private atomos: THREE.Group[] = [];
   private bolas: THREE.Mesh[] = [];
@@ -96,6 +97,7 @@ export class Escena3D {
     this.controls.enableDamping = true;
     this.controls.dampingFactor = 0.08;
     this.controls.addEventListener('change', () => (this.necesitaRender = true));
+    this.controls.addEventListener('start', () => (this.camaraTocada = true));
     protegerVisor(contenedor, this.renderer.domElement, () => this.encuadrar());
 
     // Iluminación suave: hemisférica + direccional + relleno
@@ -134,8 +136,8 @@ export class Escena3D {
     this.renderer.domElement.style.height = h + 'px';
     this.labelRenderer.setSize(w, h);
     this.camera.aspect = w / h;
-    // En vertical (móvil) se aleja un poco para que quepa
     this.camera.updateProjectionMatrix();
+    if (this.analisis && !this.camaraTocada) this.encuadrar(true); // el visor cambió de tamaño: la molécula sigue entera
     this.necesitaRender = true;
   }
 
@@ -156,7 +158,7 @@ export class Escena3D {
   };
   /** Etiquetas σ/π/ángulo/dipolo: si dos se solapan en pantalla, la segunda se desplaza (añade un translate al que fija CSS2DRenderer). */
   private separarEtiquetas() {
-    const els = Array.from(this.labelRenderer.domElement.querySelectorAll<HTMLElement>('.etiqueta-sigma,.etiqueta-pi,.etiqueta-medida,.etiqueta-hibrido'))
+    const els = Array.from(this.labelRenderer.domElement.querySelectorAll<HTMLElement>('.etiqueta-atomo,.etiqueta-sigma,.etiqueta-pi,.etiqueta-medida,.etiqueta-hibrido'))
       .filter((e) => e.style.display !== 'none' && Number(e.style.opacity || 1) > 0.03);
     const base = this.labelRenderer.domElement.getBoundingClientRect();
     const col: { x: number; y: number; w: number; h: number }[] = [];
@@ -173,6 +175,9 @@ export class Escena3D {
           if (!choca(c)) { dx = c.x - r.x; dy = c.y - r.y; r.x = c.x; r.y = c.y; break outer; }
         }
       }
+      // y dentro del visor: una etiqueta nunca queda cortada por el borde
+      const mx = Math.max(2 - (r.x - r.w / 2), 0) + Math.min(base.width - 2 - (r.x + r.w / 2), 0), my = Math.max(2 - (r.y - r.h / 2), 0) + Math.min(base.height - 2 - (r.y + r.h / 2), 0);
+      if (mx || my) { dx += mx; dy += my; r.x += mx; r.y += my; }
       if (dx || dy) { el.style.transform += ` translate(${dx.toFixed(1)}px,${dy.toFixed(1)}px)`; n++; }
       col.push(r);
     }
@@ -220,7 +225,7 @@ export class Escena3D {
     this.centro.copy(c);
     this.radioEscena = Math.max(1.6, ...P.map((p) => v3(p).distanceTo(c))) + 0.8;
     // encuadre más ajustado: una molécula pequeña (CH₄, NH₃…) debe ocupar buena parte del visor
-    this.radioEncuadre = Math.max(0.8, ...P.map((p) => v3(p).distanceTo(c))) + 0.5;
+    this.radioEncuadre = Math.max(0.8, ...P.map((p) => v3(p).distanceTo(c))) + 0.85; // átomos + lóbulos de los orbitales
 
     est.atomos.forEach((a, i) => {
       const g = new THREE.Group();
@@ -281,6 +286,7 @@ export class Escena3D {
 
     this.aplicarModo();
     this.refrescarExtras();
+    this.camaraTocada = false;
     this.encuadrar(true);
     this.pedirRender();
   }
@@ -304,7 +310,8 @@ export class Escena3D {
   }
 
   encuadrar(inmediato = false) {
-    const d = this.radioEncuadre / Math.tan((this.camera.fov * Math.PI) / 360) * (this.camera.aspect < 1 ? 1.1 / this.camera.aspect * 0.8 : 0.9);
+    // la molécula entera (con sus orbitales) cabe en vertical y en horizontal, sea cual sea la proporción del visor
+    const d = (this.radioEncuadre / Math.tan((this.camera.fov * Math.PI) / 360)) * 1.0 / Math.min(1, this.camera.aspect);
     const dir = new THREE.Vector3(0.55, 0.38, 1).normalize();
     const objetivo = this.centro.clone();
     if (inmediato) {
@@ -524,10 +531,10 @@ export class Escena3D {
     if (!this.inter.dipolo || !an.polaridad.polar || an.geometria.dipolo.magnitud < 0.1) return; // sin vector geométrico fiable (tolueno, propeno) no se dibuja la flecha
     const d = v3(an.geometria.dipolo.vector);
     const dir = d.clone().normalize();
-    const L = Math.min(3.2, 1.2 + an.polaridad.mu * 0.7);
+    const L = Math.max(0.7, Math.min(1.2, 0.6 + an.polaridad.mu * 0.15, this.radioEscena * 0.7)); // flecha corta, dentro de la molécula
     const g = new THREE.Group();
     const origen = this.centro.clone().addScaledVector(dir, -L / 2);
-    const flecha = new THREE.ArrowHelper(dir, origen, L, 0xf59e0b, 0.42, 0.26);
+    const flecha = new THREE.ArrowHelper(dir, origen, L, 0xf59e0b, 0.3, 0.18);
     (flecha.line.material as THREE.LineBasicMaterial).linewidth = 3;
     g.add(flecha);
     // cruz en el extremo positivo

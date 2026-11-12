@@ -68,12 +68,20 @@ export class LineaTemporal {
     this.irAEtapa(this.plan.length - 1, 1);
     this.mostrarFinalEstatico();
   }
+  /** Quita todo lo dibujado (para cuando la entrada no es una molécula válida). */
+  vaciar() {
+    this.limpiarRigs();
+    this.an = null;
+    this.plan = [];
+    this.escena.pedirRender();
+  }
   seleccionarCentro(c: number) {
     if (!this.an) return;
     this.centro = c;
     const idx = this.ultimoEstado?.idx ?? this.plan.length - 1;
     const id = this.ultimoEstado?.etapa.id;
     this.reconstruirPlan();
+    this.ultimaEtapa = -1; // la cámara debe volver a enfocar: el átomo analizado es otro aunque la etapa sea la misma
     // Conserva la etapa lógica si existe en el nuevo plan
     const nuevo = this.plan.findIndex((e) => e.id === id);
     const dest = nuevo >= 0 ? nuevo : Math.min(idx, this.plan.length - 1);

@@ -226,18 +226,26 @@ describe('validarAnalisis detecta incoherencias', () => {
 
 // ───────── 7. Una fila por cada especie de la biblioteca (instantánea revisada) ─────────
 describe('Biblioteca completa', () => {
-  it('tabla de especies (átomo central, hibridación, AXE, geometría, σ/π, promoción, polaridad)', async () => {
+  it('tabla de especies: TODOS los átomos centrales de TODAS las especies (hibridación, AXE, geometría, ángulo real, σ/π, promoción, polaridad)', async () => {
     const filas = BIBLIOTECA.map((e) => {
       const a = an(e.formula);
-      const c = a.centros[0];
-      const t = a.tev.atomos[c];
       return {
-        especie: e.formula, centro: `${t.simbolo}${c + 1}`, hibridacion: t.hibridacion?.tipo ?? (t.simbolo === 'H' ? '1s' : 'p puro'), axe: t.rpecv.notacion,
-        geometria: t.rpecv.geometriaMolecular, sigma: a.tev.sigma, pi: a.tev.pi, sigmaAtomo: t.sigma, piAtomo: t.pi,
-        promocion: t.promociones.map((p) => p.texto).join('; ') || '—', polaridad: a.carga ? 'ion' : a.polaridad.polar ? 'polar' : 'apolar',
+        especie: e.formula, sigma: a.tev.sigma, pi: a.tev.pi, polaridad: a.carga ? 'ion' : a.polaridad.polar ? 'polar' : 'apolar',
+        centros: a.centros.map((c) => {
+          const t = a.tev.atomos[c];
+          return {
+            centro: `${t.simbolo}${c + 1}`, hibridacion: t.hibridacion?.tipo ?? (t.simbolo === 'H' ? '1s' : 'p puro'), axe: t.rpecv.notacion,
+            geometria: t.rpecv.geometriaMolecular, anguloReal: t.rpecv.anguloRealTexto, sigmaAtomo: t.sigma, piAtomo: t.pi,
+            promocion: t.promociones.map((p) => p.texto).join('; ') || '—',
+          };
+        }),
       };
     });
-    expect(filas.length).toBeGreaterThanOrEqual(80);
+    // ninguna especie se queda fuera de la instantánea y todas tienen al menos un átomo analizado
+    expect(filas.length).toBe(BIBLIOTECA.length);
+    expect(new Set(filas.map((f) => f.especie)).size).toBe(BIBLIOTECA.length);
+    expect(filas.filter((f) => !f.centros.length).map((f) => f.especie)).toEqual([]);
+    // cualquier cambio en los datos de cualquier especie hace fallar esta comparación con el archivo revisado
     await expect(JSON.stringify(filas, null, 1)).toMatchFileSnapshot('./biblioteca.tabla.json');
   });
 });

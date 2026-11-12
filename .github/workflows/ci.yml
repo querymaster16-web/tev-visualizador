@@ -1,0 +1,37 @@
+name: Comprobaciones
+# Avisa por correo si algo falla. La publicación en Vercel ya ejecuta «npm test && npm run build» (ver vercel.json);
+# aquí se añade además la versión recortada de las pruebas visuales de Playwright.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  pruebas:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Pruebas de química y de texto (vitest)
+        run: npm test
+      - name: Compilar
+        run: npm run build
+      - name: Navegador para Playwright
+        run: npx playwright install --with-deps chromium
+      - name: Pruebas visuales y táctiles (Playwright, versión recortada)
+        run: npx playwright test --workers=4
+      - name: Informes si algo falla
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: informes-playwright
+          path: test-results
+          retention-days: 7

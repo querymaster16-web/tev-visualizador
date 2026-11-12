@@ -380,11 +380,16 @@ export class Vista2D {
     }
     if (estatico && o.dipolo && an.polaridad.polar && an.geometria.dipolo.magnitud >= 0.1) {
       const dir = norm(an.geometria.dipolo.vector);
-      const L = Math.min(2.4, 1 + an.polaridad.mu * 0.5);
+      const ext = Math.max(...P.map((p) => len(p)));
+      const L = Math.max(0.7, Math.min(1.2, 0.6 + an.polaridad.mu * 0.15, ext * 1.2)); // flecha corta, siempre dentro de la molécula
       const a = mul(dir, -L / 2), b = mul(dir, L / 2);
       this.flecha(items, a, b, '#f59e0b', 3.2, 1);
       const pa = this.proj(a), pt = this.proj(b);
-      items.push({ z: 1e9, draw: () => { this.ctx.globalAlpha = 1; this.ctx.fillStyle = '#f59e0b'; this.ctx.beginPath(); this.ctx.arc(pa.x, pa.y, 4, 0, 7); this.ctx.fill(); } });
+      items.push({ z: 1e9, draw: () => {
+        // extremo positivo: cruz dentro de un círculo, como en los dibujos de clase
+        const c = this.ctx; c.globalAlpha = 1; c.strokeStyle = '#f59e0b'; c.fillStyle = this.oscuro ? '#151a26' : '#ffffff'; c.lineWidth = 1.8; c.lineCap = 'round';
+        c.beginPath(); c.arc(pa.x, pa.y, 6, 0, 7); c.fill(); c.stroke(); c.beginPath(); c.moveTo(pa.x - 3, pa.y); c.lineTo(pa.x + 3, pa.y); c.moveTo(pa.x, pa.y - 3); c.lineTo(pa.x, pa.y + 3); c.stroke();
+      } });
       const ang = Math.atan2(pt.y - pa.y, pt.x - pa.x);
       cabeza = { x: pt.x, y: pt.y, w: 22, h: 22 };
       etq.push({ txt: textoMu(an.polaridad), x: pt.x + Math.cos(ang) * 30, y: pt.y + Math.sin(ang) * 18, c: '#f59e0b' });
@@ -397,19 +402,24 @@ export class Vista2D {
       const r = (a.el.simbolo === 'H' ? 0.24 : 0.2 + 0.2 * (a.el.radio / 100)) * this.esc() * p.k;
       return { x: p.x, y: p.y, w: r * 2, h: r * 2 };
     });
-    const choca = (r: { x: number; y: number; w: number; h: number }) => ocupado.some((q) => Math.abs(r.x - q.x) < (r.w + q.w) / 2 + 2 && Math.abs(r.y - q.y) < (r.h + q.h) / 2 + 2);
+    type R = { x: number; y: number; w: number; h: number };
+    const pisa = (r: R, lista: R[]) => lista.some((q) => Math.abs(r.x - q.x) < (r.w + q.w) / 2 + 2 && Math.abs(r.y - q.y) < (r.h + q.h) / 2 + 2);
     if (estatico) this.cv.dataset.etqExtras = JSON.stringify(etq.map((t) => t.txt));
-    if (cabeza) ocupado.push(cabeza);
+    const ocupadoEtq: R[] = [];
+    const punta: R[] = cabeza ? [cabeza] : [];
+    let sinSitio = 0;
     etq.forEach((t) => {
       const w = this.ctx.measureText(t.txt).width + 14, h = 20;
-      let r = { x: t.x, y: t.y, w, h };
-      const cand: { x: number; y: number; w: number; h: number }[] = [r];
-      for (let k = 1; k <= 7; k++) for (const [dx, dy] of [[0, -1], [0, 1], [1, 0], [-1, 0], [1, -1], [-1, -1], [1, 1], [-1, 1]]) cand.push({ x: t.x + dx * k * (w * 0.5 + 6), y: t.y + dy * k * (h + 4), w, h });
-      const libre = cand.find((q) => !choca(q) && q.x - w / 2 > 2 && q.x + w / 2 < W - 2 && q.y - h / 2 > 2 && q.y + h / 2 < H - 2);
-      r = libre ?? r;
-      ocupado.push({ ...r, w: r.w + 2, h: r.h + 2 });
+      const cand: R[] = [{ x: t.x, y: t.y, w, h }];
+      for (let k = 1; k <= 10; k++) for (const [dx, dy] of [[0, -1], [0, 1], [1, 0], [-1, 0], [1, -1], [-1, -1], [1, 1], [-1, 1]]) cand.push({ x: t.x + dx * k * (w * 0.5 + 6), y: t.y + dy * k * (h + 4), w, h });
+      const dentro = cand.filter((q) => q.x - w / 2 > 2 && q.x + w / 2 < W - 2 && q.y - h / 2 > 2 && q.y + h / 2 < H - 2);
+      // 1.º sitio libre de átomos y de otras etiquetas; 2.º libre de etiquetas (puede quedar sobre un átomo); 3.º cualquiera dentro del visor
+      const r = dentro.find((q) => !pisa(q, ocupado) && !pisa(q, ocupadoEtq) && !pisa(q, punta)) ?? dentro.find((q) => !pisa(q, ocupadoEtq) && !pisa(q, punta)) ?? dentro.find((q) => !pisa(q, ocupadoEtq)) ?? dentro[0] ?? cand[0];
+      if (pisa(r, ocupadoEtq) && estatico) sinSitio++;
+      ocupadoEtq.push({ ...r, w: r.w + 2, h: r.h + 2 });
       items.push({ z: 1e9, draw: () => { this.ctx.globalAlpha = alpha; this.pildora(t.txt, r.x, r.y, t.c); } });
     });
+    if (estatico) this.cv.dataset.etqExtrasSolapes = String(sinSitio);
   }
 
   /** Escena de la animación paso a paso (misma estética que la vista de resultado). */
@@ -507,13 +517,24 @@ export class Vista2D {
       const serif = t.tipo === 'hib';
       ctx.font = serif ? '600 15px Fraunces, Georgia, serif' : '600 12px Inter, system-ui, sans-serif';
       const r = { x: p.x, y: p.y, w: ctx.measureText(t.txt).width + 16, h: serif ? 26 : 20 };
-      if (choca(r)) {
-        let ok = false;
-        for (let k = 1; k <= 8 && !ok; k++) {
-          for (const [dx, dy] of [[0, -1], [0, 1], [1, 0], [-1, 0], [1, -1], [-1, -1], [1, 1], [-1, 1]]) {
-            const c = { ...r, x: p.x + dx * k * (r.w * 0.5 + 4) * (dy === 0 ? 1 : 0.6), y: p.y + dy * k * (r.h + 2) };
-            if (!choca(c)) { r.x = c.x; r.y = c.y; ok = true; break; }
+      // la etiqueta debe quedar dentro del visor y sin pisar a otra: primero se desplaza la etiqueta (y se vuelve a probar), solo al final se ajusta al borde
+      const cw = this.cv.clientWidth, ch = this.cv.clientHeight - this.margenInf;
+      const dentro = (q: { x: number; y: number; w: number; h: number }) => q.x - q.w / 2 >= 1 && q.x + q.w / 2 <= cw - 1 && q.y - q.h / 2 >= 1 && q.y + q.h / 2 <= ch - 1;
+      const sitio = (q: { x: number; y: number; w: number; h: number }) => !choca(q) && dentro(q);
+      if (!sitio(r)) {
+        // primero el borde (sin cambiar de sitio si no estorba), después la espiral de posiciones
+        const pegada = { ...r, x: Math.max(r.w / 2 + 1, Math.min(cw - r.w / 2 - 1, r.x)), y: Math.max(r.h / 2 + 1, Math.min(ch - r.h / 2 - 1, r.y)) };
+        if (sitio(pegada)) { r.x = pegada.x; r.y = pegada.y; }
+        else {
+          let ok = false;
+          for (let k = 1; k <= 16 && !ok; k++) {
+            for (const [dx, dy] of [[0, -1], [0, 1], [1, 0], [-1, 0], [1, -1], [-1, -1], [1, 1], [-1, 1], [2, -1], [-2, -1], [2, 1], [-2, 1], [1, -2], [-1, -2], [1, 2], [-1, 2]]) {
+              const c = { ...r, x: p.x + dx * k * (r.w * 0.5 + 4) * (dy === 0 ? 1 : 0.6) * 0.75, y: p.y + dy * k * (r.h + 2) * 0.75 };
+              const cp = { ...c, x: Math.max(c.w / 2 + 1, Math.min(cw - c.w / 2 - 1, c.x)), y: Math.max(c.h / 2 + 1, Math.min(ch - c.h / 2 - 1, c.y)) };
+              if (sitio(cp)) { r.x = cp.x; r.y = cp.y; ok = true; break; }
+            }
           }
+          if (!ok) { r.x = pegada.x; r.y = pegada.y; }
         }
       }
       colocadas.push(r);
@@ -533,6 +554,7 @@ export class Vista2D {
     let solapes = 0;
     colocadas.forEach((a, i) => colocadas.slice(i + 1).forEach((b) => { if (Math.abs(a.x - b.x) < (a.w + b.w) / 2 && Math.abs(a.y - b.y) < (a.h + b.h) / 2) solapes++; }));
     this.cv.dataset.etqSolapes = String(solapes);
+    { const cw = this.cv.clientWidth, ch = this.cv.clientHeight - this.margenInf; this.cv.dataset.etqFuera = String(colocadas.filter((r) => r.x - r.w / 2 < -1 || r.x + r.w / 2 > cw + 1 || r.y - r.h / 2 < -1 || r.y + r.h / 2 > ch + 1).length); }
     this.extras(items, false, alpha);
     items.sort((a, b) => a.z - b.z).forEach((it) => it.draw());
     ctx.globalAlpha = 1;

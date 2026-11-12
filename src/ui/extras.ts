@@ -127,19 +127,43 @@ export function abrirComparador(raiz: HTMLElement, tema: TemaSVG, oscuro: boolea
   });
   const etapa = () => +(m.querySelector('#cs') as HTMLInputElement).value;
   const aplicar = () => lados.forEach((l) => { if (!l.an) return; const i = l.lt.plan.findIndex((e) => e.numero >= etapa()); l.lt.irAEtapa(i < 0 ? l.lt.plan.length - 1 : i, 1); (m.querySelector('#ce') as HTMLElement).textContent = `Etapa ${etapa()}`; });
+  const vaciar = (k: number, html: string) => {
+    const l = lados[k];
+    l.an = null;
+    l.lt.vaciar();
+    l.esc3.limpiar();
+    l.esc3.analisis = null;
+    l.esc3.pedirRender();
+    (m.querySelector('#d' + k) as HTMLElement).innerHTML = html;
+  };
+  let version = [0, 0]; // si se cambia la molécula varias veces seguidas, solo cuenta la última
   const poner = (k: number, txt: string) => {
+    const mi = ++version[k];
     try {
       const r = analizar(txt);
-      if (r.tipo !== 'ok') return;
-      const l = lados[k];
-      l.an = r.analisis;
+      if (mi !== version[k]) return;
       (m.querySelector('#c' + k) as HTMLInputElement).value = txt;
-      l.esc3.cargar(r.analisis);
-      l.lt.cargar(r.analisis);
-      const t = r.analisis.tev.atomos[r.analisis.centros[0]];
-      (m.querySelector('#d' + k) as HTMLElement).innerHTML = `<table class="tabla"><tr><th>Molécula</th><td>${esc(r.analisis.formula)}</td></tr><tr><th>Átomo central</th><td>${t.etiqueta}</td></tr><tr><th>AXE</th><td>${t.rpecv.notacion}</td></tr><tr><th>Hibridación</th><td>${t.hibridacion ? hibridoTexto(t.hibridacion.tipo) : 'p'}</td></tr><tr><th>Geometría</th><td>${t.rpecv.geometriaMolecular}</td></tr><tr><th>σ / π</th><td>${r.analisis.tev.sigma} / ${r.analisis.tev.pi}</td></tr><tr><th>Polaridad</th><td>${r.analisis.geometria.dipolo.polar ? 'polar (' + num(r.analisis.geometria.dipolo.magnitud, 1) + ' D)' : 'apolar'}</td></tr></table>`;
+      if (r.tipo !== 'ok') {
+        vaciar(k, `<p class="iso">«${esc(txt)}» (${esc(r.formula)}) admite varios esqueletos. Elige uno:<br>${r.opciones.map((o) => `<button class="chip" data-f="${esc(o.formula)}">${esc(o.nombre)}</button>`).join(' ')}</p>`);
+        m.querySelectorAll(`#d${k} button[data-f]`).forEach((b) => b.addEventListener('click', () => poner(k, (b as HTMLElement).dataset.f!)));
+        return;
+      }
+      const l = lados[k];
+      const an = r.analisis;
+      l.an = an;
+      l.esc3.cargar(an);
+      l.lt.cargar(an);
+      const c0 = an.centros[0];
+      const t = an.tev.atomos[c0];
+      const centro = `${an.estructura.atomos[c0].el.simbolo}${c0 + 1}${an.centros.length > 1 ? ` (1.º de ${an.centros.length} centros)` : ''}`;
+      (m.querySelector('#d' + k) as HTMLElement).innerHTML = t.error
+        ? `<table class="tabla"><tr><th>Molécula</th><td>${esc(an.formula)}</td></tr></table><p class="msg">${esc(t.error)}</p>`
+        : `<table class="tabla"><tr><th>Molécula</th><td>${esc(an.formula)}</td></tr><tr><th>${an.centros.length > 1 ? 'Átomo analizado' : 'Átomo central'}</th><td>${esc(centro)}</td></tr><tr><th>AXE</th><td>${t.rpecv.notacion}</td></tr><tr><th>Hibridación</th><td>${t.hibridacion ? hibridoTexto(t.hibridacion.tipo) : 'p'}</td></tr><tr><th>Geometría</th><td>${esc(t.rpecv.geometriaMolecular)}</td></tr><tr><th>σ / π</th><td>${an.tev.sigma} / ${an.tev.pi}</td></tr><tr><th>Polaridad</th><td>${an.carga ? 'ion (no se clasifica)' : an.polaridad.polar ? 'polar, ' + textoMu(an.polaridad) : 'apolar'}</td></tr></table>`;
       aplicar();
-    } catch (e) { if (!(e instanceof ErrorQuimica)) throw e; (m.querySelector('#d' + k) as HTMLElement).innerHTML = `<p class="msg">${esc(e.message)}</p>`; }
+    } catch (e) {
+      if (!(e instanceof ErrorQuimica)) throw e;
+      if (mi === version[k]) vaciar(k, `<p class="msg">${esc(e.message)}</p>`);
+    }
   };
   [0, 1].forEach((k) => m.querySelector('#c' + k)!.addEventListener('change', (e) => poner(k, (e.target as HTMLInputElement).value)));
   m.querySelector('#cs')!.addEventListener('input', aplicar);

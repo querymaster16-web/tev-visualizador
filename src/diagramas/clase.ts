@@ -82,7 +82,11 @@ export class DiagramaClase {
     this.neighbors = Object.keys(t.porVecino).map(Number).sort((a, b) => a - b);
     const s = this.svg;
     s.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
-    s.setAttribute('viewBox', `0 0 ${this.W} ${H}`);
+    // «no hibrida → / solapamiento lateral (π)» va sobre el orbital p que forma el π: si no cabe arriba, se amplía el margen superior del diagrama
+    const noHib0 = this.orbs.filter((o) => (h ? o.i >= this.N : false) && t.roles[o.id]?.rol === 'pi');
+    const arriba = noHib0.length ? Math.min(...noHib0.map((o) => Math.max(34, Math.min(o.y, this.yH - 40)))) - 46 - 16 - 16 : 99;
+    const pad = arriba < 0 ? Math.ceil(-arriba) + 4 : 0;
+    s.setAttribute('viewBox', `0 ${-pad} ${this.W} ${H + pad}`);
         s.setAttribute('font-family', 'Inter, system-ui, sans-serif');
     s.setAttribute('role', 'img');
     s.setAttribute('aria-label', 'Diagrama de niveles como en clase: fundamental, promoción e hibridación');
@@ -279,8 +283,8 @@ export class DiagramaClase {
       if (noHib.length && ei >= 3) {
         const y0 = Math.min(...noHib.map((o) => Math.max(34, Math.min(o.y, this.yH - 40)))) - 46;
         // dos líneas para que quepa entero
-        s += this.texto(o3 + this.wP[2] - 2, y0 - 16, 'no hibrida →', 14, ROL.pi, 'end', clamp01(m * 2), 600, true);
-        s += this.texto(o3 + this.wP[2] - 2, y0, 'solapamiento lateral (π)', 14, ROL.pi, 'end', clamp01(m * 2), 600, true);
+        s += this.texto(o3 + this.wP[2] - 16, y0 - 16, 'no hibrida →', 14, ROL.pi, 'end', clamp01(m * 2), 600, true);
+        s += this.texto(o3 + this.wP[2] - 16, y0, 'solapamiento lateral (π)', 14, ROL.pi, 'end', clamp01(m * 2), 600, true);
       }
       s += this.texto(o3 + this.wP[2] / 2, PH - 2, hib ? 'orbitales híbridos' : 'orbitales atómicos', 14, tema.suave, 'middle', 1, 500, true);
       // geometría y enlaces, como en las notas de clase: en una banda propia bajo los paneles

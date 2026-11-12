@@ -148,9 +148,10 @@ export function lewisSVG(est: Estructura, pos: Vec3[], tema: TemaSVG, op: Opcion
   const pr = bal ? bal.pr : rueda ?? proy.pr, angF = proy.angF;
   const xs = pr.map((p) => p[0]), ys = pr.map((p) => p[1]);
   const w = Math.max(...xs) - Math.min(...xs), h = Math.max(...ys) - Math.min(...ys);
-  const sc = Math.min((W - 2 * m) / Math.max(w, 0.8), (H - 2 * m) / Math.max(h, 0.8), 64);
+  const rd = est.cargaTotal !== 0 ? 28 : 0; // sitio para la carga total junto al corchete derecho
+  const sc = Math.min((W - 2 * m - rd) / Math.max(w, 0.8), (H - 2 * m) / Math.max(h, 0.8), 64);
   const cx = (Math.max(...xs) + Math.min(...xs)) / 2, cy = (Math.max(...ys) + Math.min(...ys)) / 2;
-  const A: P2[] = pr.map((p) => [W / 2 + (p[0] - cx) * sc, H / 2 + (p[1] - cy) * sc]);
+  const A: P2[] = pr.map((p) => [W / 2 - rd / 2 + (p[0] - cx) * sc, H / 2 + (p[1] - cy) * sc]);
   const rAt = (i: number) => (est.atomos[i].el.simbolo === 'H' ? 8 : 11);
   let s = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" font-family="Inter, system-ui, sans-serif" role="img" aria-label="Estructura de Lewis">`;
   // enlaces
@@ -224,7 +225,7 @@ export function lewisSVG(est: Estructura, pos: Vec3[], tema: TemaSVG, op: Opcion
     const y0 = Math.min(...A.map((p) => p[1])) - 26, y1 = Math.max(...A.map((p) => p[1])) + 26;
     const br = (x: number, dir: number) => `<path d="M${x - dir * 8},${y0} L${x},${y0} L${x},${y1} L${x - dir * 8},${y1}" fill="none" stroke="${tema.tinta}" stroke-width="1.6"/>`;
     s += br(x0, -1) + br(x1, 1);
-    s += `<text x="${x1 + 5}" y="${y0 + 4}" font-size="15" font-weight="600" fill="${tema.tinta}">${esc(cargaTexto(est.cargaTotal))}</text>`;
+    s += `<text x="${x1 + 5}" y="${y0 + 12}" font-size="15" font-weight="600" fill="${tema.tinta}">${esc(cargaTexto(est.cargaTotal))}</text>`;
   }
   if (op.titulo) s += `<text x="${W / 2}" y="${H - 6}" text-anchor="middle" font-size="11" fill="${tema.suave}">${esc(op.titulo)}</text>`;
   return s + '</svg>';
