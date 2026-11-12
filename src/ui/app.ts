@@ -67,7 +67,7 @@ export class App {
   private montar() {
     this.raiz.innerHTML = `
     <header class="cab">
-      <div class="marca"><b>TEV</b> Enlace de Valencia <small>visualizador interactivo</small><small class="autor">por Juan Soilán</small></div>
+      <div class="marca"><b>TEV</b> Enlace de Valencia <small>visualizador interactivo</small></div>
       <div class="acc">
         <button class="btn" id="b-bib" aria-haspopup="dialog">Biblioteca</button>
         <div class="pop-w"><button class="btn" id="b-menu" aria-haspopup="true">☰ Menú</button><div class="pop" id="pop-menu" hidden></div></div>
@@ -118,7 +118,8 @@ export class App {
         </div>
         ${['datos', 'lewis', 'energia', 'enlaces', 'pasos'].map((k) => `<div class="panel ${k === 'datos' ? 'on' : ''}" id="p-${k}" role="tabpanel"></div>`).join('')}
       </aside>
-    </main>`;
+    </main>
+    <p class="firma">Juan Soilán · 2026</p>`;
     const q = (id: string) => this.raiz.querySelector('#' + id) as HTMLElement;
     ['q', 'sug', 'aviso', 'visor', 'msg3d', 'gauge', 'gtxt', 'centro', 'marcas', 'chips', 'l-etq', 'l-play', 'l-rango', 'p-pasos', 'p-lewis', 'p-energia', 'p-datos', 'p-enlaces', 'b-tema', 'b-rot', 'lt', 'cta-w', 'pop-vista', 'pop-menu'].forEach((i) => (this.el[i] = q(i)));
     this.escena = new Escena3D(this.el.visor);

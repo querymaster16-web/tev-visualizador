@@ -80,9 +80,9 @@ for (const [w, h] of ANCHOS) {
     if (!desplazable) expect(svg.x).toBeGreaterThanOrEqual(cont.x - 1);
     const vb = await page.locator('#clase-box svg').evaluate((el) => (el as SVGSVGElement).viewBox.baseVal.width);
     expect(svg.width / vb, 'escala mínima del texto').toBeGreaterThanOrEqual(0.84);
-    // cabecera: título en una línea (más la línea pequeña de autoría) y botones dentro
+    // cabecera: título en una línea y botones dentro
     const t = (await page.locator('.marca').boundingBox())!;
-    expect(t.height).toBeLessThan(56);
+    expect(t.height).toBeLessThan(40);
     const bt = (await page.locator('#b-tema').boundingBox())!;
     expect(bt.x + bt.width).toBeLessThanOrEqual(w + 0.5);
   });

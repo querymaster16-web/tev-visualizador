@@ -168,7 +168,7 @@ html,body{overflow-x:hidden}
   .comp .visor{height:min(300px,60svh);min-height:min(260px,60svh)}
 }
 .modal>div{overscroll-behavior:contain}
-/* Autoría: en su propia línea bajo el título; junto al subtítulo cuando la cabecera tiene sitio de sobra */
-.marca{flex-wrap:wrap;row-gap:2px}
-.marca .autor{display:block;flex:0 0 100%;font:500 12px var(--sans);color:var(--muted);letter-spacing:0}
-@media (min-width:1040px){.marca .autor{display:inline;flex:none}.marca .autor::before{content:'· '}.marca .autor{margin-left:-4px}}
+/* Firma: solo texto, al final del contenido (no fija), discreta */
+.firma{margin:0;padding:0 24px 16px;text-align:right;font:400 11px var(--sans);color:var(--muted);opacity:.7}
+@media (max-width:639px){.firma{padding:0 16px 12px}}
+@media print{.firma{display:none!important}}
